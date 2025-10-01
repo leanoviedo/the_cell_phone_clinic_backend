@@ -3,13 +3,13 @@ const router = express.Router();
 
 const {
   getPhones,
-  createPhones,  // <-- debe coincidir con el controlador
+  createPhones,
   updatePhone,
   deletePhone
 } = require("../controllers/controllerPhones");
 
 router.get("/", getPhones);
-router.post("/", createPhones);   // <-- aquí también coincide
+router.post("/", createPhones);
 router.put("/:id", updatePhone);
 router.delete("/:id", deletePhone);
 

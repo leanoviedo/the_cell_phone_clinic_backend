@@ -10,6 +10,7 @@ const AccessorySchema = new mongoose.Schema(
     link: String,
     price: Number,
     category: String,
+    promotion: { type: Boolean, default: false },
     stock: { type: Boolean, default: true },
   },
   { timestamps: true }

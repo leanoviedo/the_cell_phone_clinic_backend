@@ -33,7 +33,11 @@ const createAccessory = async (req, res) => {
 // PUT actualizar accesorio
 const updateAccessory = async (req, res) => {
   try {
-    const actualizado = await Accessory.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const actualizado = await Accessory.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
     res.json(actualizado);
   } catch (error) {
     res.status(500).json({ error: "Error al actualizar accesorio" });
@@ -50,4 +54,9 @@ const deleteAccessory = async (req, res) => {
   }
 };
 
-module.exports = { getAccessories, createAccessory, updateAccessory, deleteAccessory };
+module.exports = {
+  getAccessories,
+  createAccessory,
+  updateAccessory,
+  deleteAccessory,
+};

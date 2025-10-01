@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const PhoneSchema = new mongoose.Schema(
+const phoneSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
@@ -13,9 +13,10 @@ const PhoneSchema = new mongoose.Schema(
     storage: { type: String, required: true },
     battery: String,
     color: String,
-    stock: { type: Boolean, default: true },
+    stock: { type: Boolean, default: true, required: true },
+    promotion: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Phone", PhoneSchema);
+module.exports = mongoose.model("Phone", phoneSchema);
