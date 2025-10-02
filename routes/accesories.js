@@ -6,9 +6,9 @@ const {
 } = require("../controllers/controllersAccessories.js");
 
 const router = express.Router();
-
-router.get("/", getAccessories);
-router.post("/", createAccessory);
-router.delete("/:id", deleteAccessory);
+router.get("/", getAccessories);          // GET todos los accesorios
+router.post("/", createAccessory);        // POST crear uno o varios
+router.put("/:id", createAccessory);      // PUT actualizar accesorio
+router.delete("/:id", deleteAccessory);   // DELETE eliminar accesorio
 
 module.exports = router;
