@@ -1,11 +1,10 @@
 const express = require("express");
 const router = express.Router();
-
 const {
   getPhones,
   createPhones,
   updatePhone,
-  deletePhone
+  deletePhone,
 } = require("../controllers/controllerPhones");
 
 router.get("/", getPhones);

@@ -1,14 +1,17 @@
 const express = require("express");
 const {
-  createAccessory,
   getAccessories,
+  createAccessory,
+  updateAccessory,
   deleteAccessory,
-} = require("../controllers/controllersAccessories.js");
+} = require("../controllers/controllersAccessories");
 
 const router = express.Router();
-router.get("/", getAccessories);          // GET todos los accesorios
-router.post("/", createAccessory);        // POST crear uno o varios
-router.put("/:id", createAccessory);      // PUT actualizar accesorio
-router.delete("/:id", deleteAccessory);   // DELETE eliminar accesorio
+
+// ✅ Rutas correctas
+router.get("/", getAccessories); // GET todos
+router.post("/", createAccessory); // POST crear uno o varios
+router.put("/:id", updateAccessory); // PUT actualizar
+router.delete("/:id", deleteAccessory); // DELETE eliminar
 
 module.exports = router;

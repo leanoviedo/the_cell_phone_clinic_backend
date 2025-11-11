@@ -10,7 +10,7 @@ const phoneSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     brand: { type: String, required: true },
     ram: String,
-    storage: { type: String, required: true },
+    storage: String,
     battery: String,
     color: String,
     stock: { type: Boolean, default: true, required: true },

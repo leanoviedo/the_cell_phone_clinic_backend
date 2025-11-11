@@ -1,56 +1,73 @@
-const Phone = require("../models/modelPhones"); // Solo una importación
+const Phone = require("../models/Phone");
 
-// GET todos los teléfonos
+// ✅ GET - obtener todos los teléfonos
 const getPhones = async (req, res) => {
   try {
     const phones = await Phone.find();
     res.json(phones);
   } catch (error) {
-    res.status(500).json({ error: "Error al obtener los teléfonos" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// POST nuevo teléfono
+// ✅ POST - crear uno o varios teléfonos
 const createPhones = async (req, res) => {
   try {
+    console.log("📥 Datos recibidos en POST /api/phones:", req.body);
     const data = req.body;
 
-    if (Array.isArray(data)) {
-      // Si es un array, inserta todos
-      const phones = await Phone.insertMany(data);
-      res.status(201).json(phones);
-    } else {
-      // Si es un solo objeto, guarda uno
-      const nuevo = new Phone(data);
-      await nuevo.save();
-      res.status(201).json(nuevo);
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return res.status(400).json({ error: "No se enviaron datos" });
     }
+
+    let result;
+    if (Array.isArray(data)) {
+      console.log("🧩 Insertando múltiples teléfonos...");
+      result = await Phone.insertMany(data);
+    } else {
+      console.log("📱 Insertando un solo teléfono...");
+      const nuevo = new Phone(data);
+      result = await nuevo.save();
+    }
+
+    console.log("✅ Inserción correcta:", result);
+    res.status(201).json(result);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error al crear teléfono" });
+    console.error("❌ Error en createPhones:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// PUT actualizar teléfono
+// ✅ PUT - actualizar teléfono
 const updatePhone = async (req, res) => {
   try {
-    const actualizado = await Phone.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    res.json(actualizado);
+    const { id } = req.params;
+    const updated = await Phone.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updated)
+      return res.status(404).json({ error: "Teléfono no encontrado" });
+    res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: "Error al actualizar teléfono" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// DELETE eliminar teléfono
+// ✅ DELETE - eliminar teléfono
 const deletePhone = async (req, res) => {
   try {
-    await Phone.findByIdAndDelete(req.params.id);
-    res.json({ msg: "Teléfono eliminado" });
+    const { id } = req.params;
+    const deleted = await Phone.findByIdAndDelete(id);
+    if (!deleted)
+      return res.status(404).json({ error: "Teléfono no encontrado" });
+    res.json({ mensaje: "Teléfono eliminado correctamente" });
   } catch (error) {
-    res.status(500).json({ error: "Error al eliminar teléfono" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = { getPhones, createPhones, updatePhone, deletePhone };
+// 👇 exportar correctamente
+module.exports = {
+  getPhones,
+  createPhones,
+  updatePhone,
+  deletePhone,
+};
