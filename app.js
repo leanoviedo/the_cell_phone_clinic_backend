@@ -8,35 +8,30 @@ const accessoryRoutes = require("./routes/accesories");
 
 const app = express();
 
-console.log("1️⃣ Iniciando app.js...");
-
+// Middlewares
 app.use(express.json());
 app.use(cors());
-console.log("2️⃣ Middlewares cargados.");
+
+// Conexión a la base de datos
+connectDB()
+  .then(() => console.log("✅ MongoDB Atlas conectado correctamente"))
+  .catch((err) => console.error("❌ Error al conectar MongoDB:", err.message));
 
 // Rutas
-try {
-  app.use("/api/phones", phoneRoutes);
-  app.use("/api/accessories", accessoryRoutes);
-  console.log("3️⃣ Rutas cargadas correctamente.");
-} catch (err) {
-  console.error("⚠️ Error al cargar rutas:", err.message);
-}
+app.use("/api/phones", phoneRoutes);
+app.use("/api/accessories", accessoryRoutes);
 
 app.get("/", (_req, res) => {
-  console.log("4️⃣ GET / solicitado");
-  res.send("🚀 API funcionando");
+  res.send("🚀 API funcionando correctamente en Vercel");
 });
 
-const PORT = process.env.PORT || 3000;
+// Solo iniciar el servidor local si no está en producción
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () =>
+    console.log(`✅ Server local en http://localhost:${PORT}`)
+  );
+}
 
-console.log("5️⃣ Leyendo URI...");
-console.log("🧩 MONGODB_URI:", process.env.MONGODB_URI);
-
-connectDB()
-  .then(() => {
-    app.listen(PORT, () =>
-      console.log(`✅ Server en http://localhost:${PORT}`)
-    );
-  })
-  .catch((err) => console.error("❌ Error general:", err));
+// Exportar la app para Vercel
+module.exports = app;

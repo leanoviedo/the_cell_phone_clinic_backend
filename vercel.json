@@ -5,11 +5,5 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "app.js" }
-    ],
-    "env": {
-      "MONGODB_URI": "@mongodb-uri",
-      "PORT": "3000"
-    }
+  ]
 }
-
-
