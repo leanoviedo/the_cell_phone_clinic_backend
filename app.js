@@ -26,12 +26,11 @@ app.get("/", (_req, res) => {
 });
 
 // Solo iniciar el servidor local si no está en producción
-if (process.env.NODE_ENV !== "production") {
+if (process.env.VERCEL !== "1") {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () =>
-    console.log(`✅ Server local en http://localhost:${PORT}`)
-  );
+  app.listen(PORT, () => console.log(`✅ Server local en http://localhost:${PORT}`));
 }
+
 
 // Exportar la app para Vercel
 module.exports = app;
