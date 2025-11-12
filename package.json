@@ -1,14 +1,21 @@
 {
   "name": "the_cell_phone_clinic_backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend de La Clínica del Celular - API con Express y MongoDB",
   "main": "app.js",
   "scripts": {
     "dev": "nodemon app.js",
     "start": "node app.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "express",
+    "vercel",
+    "api",
+    "mongodb",
+    "mongoose",
+    "backend"
+  ],
+  "author": "Lean Oviedo",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
