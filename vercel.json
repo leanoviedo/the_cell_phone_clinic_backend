@@ -1,15 +1,32 @@
 {
   "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    },
+    "app.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "builds": [
     {
       "src": "app.js",
-      "use": "@vercel/node@3.0.0"
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/app.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/app.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "NODE_VERSION": "18.x",
+    "MONGODB_URI": "@mongodb_uri" 
+  }
 }
