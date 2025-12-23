@@ -1,18 +1,64 @@
 const mongoose = require("mongoose");
 const Accessory = require("../models/modelAccesories");
 
-// ✅ GET - obtener todos los accesorios
+/** busqueda con filtros
+ * GET /api/accessories
+ * - Todos
+ * - Filtro por title y category
+ * Ej:
+ * /api/accessories?title=cable
+ * /api/accessories?category=cargador
+ */
 const getAccessories = async (req, res) => {
   try {
-    const accessories = await Accessory.find();
+    const { title, category } = req.query;
+    const filter = {};
+
+    if (title) {
+      filter.title = { $regex: title, $options: "i" };
+    }
+
+    if (category) {
+      filter.category = { $regex: category, $options: "i" };
+    }
+
+    const accessories = await Accessory.find(filter);
     res.status(200).json(accessories);
   } catch (error) {
     console.error("❌ Error al obtener accesorios:", error);
-    res.status(500).json({ error: "Error al obtener los accesorios" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ POST - crear uno o varios accesorios
+/**
+ * busqueda por id - Por _id de Mongo o id personalizado
+ * GET /api/accessories/:id
+ */
+const getAccessoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let accessory;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      accessory = await Accessory.findById(id);
+    } else {
+      accessory = await Accessory.findOne({ id });
+    }
+
+    if (!accessory) {
+      return res.status(404).json({ error: "Accesorio no encontrado" });
+    }
+
+    res.status(200).json(accessory);
+  } catch (error) {
+    res.status(400).json({ error: "ID inválido" });
+  }
+};
+
+/**
+ * - Crear uno o varios accesorios
+ * POST /api/accessories
+ */
 const createAccessory = async (req, res) => {
   try {
     const data = req.body;
@@ -27,78 +73,82 @@ const createAccessory = async (req, res) => {
       console.log("🧩 Insertando múltiples accesorios...");
       result = await Accessory.insertMany(data);
     } else {
-      console.log("🎧 Insertando un solo accesorio...");
+      console.log("🎧 Insertando un accesorio...");
       const nuevo = new Accessory(data);
       result = await nuevo.save();
     }
 
-    console.log("✅ Inserción correcta:", result);
     res.status(201).json(result);
   } catch (error) {
     console.error("❌ Error al crear accesorios:", error);
-    res.status(500).json({ error: "Error al crear accesorios" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ PUT - actualizar accesorio (por _id o por id personalizado)
+/**
+ * Actualizar por _id o id personalizado
+ * PUT /api/accessories/:id
+ */
 const updateAccessory = async (req, res) => {
   try {
     const { id } = req.params;
-    let actualizado;
+    let updated;
 
     if (mongoose.Types.ObjectId.isValid(id)) {
-      // Buscar por _id
-      actualizado = await Accessory.findByIdAndUpdate(id, req.body, {
+      updated = await Accessory.findByIdAndUpdate(id, req.body, {
         new: true,
+        runValidators: true,
       });
     } else {
-      // Buscar por el campo "id" personalizado
-      actualizado = await Accessory.findOneAndUpdate({ id }, req.body, {
+      updated = await Accessory.findOneAndUpdate({ id }, req.body, {
         new: true,
+        runValidators: true,
       });
     }
 
-    if (!actualizado) {
+    if (!updated) {
       return res.status(404).json({ error: "Accesorio no encontrado" });
     }
 
-    res.status(200).json(actualizado);
+    res.status(200).json(updated);
   } catch (error) {
     console.error("❌ Error al actualizar accesorio:", error);
-    res.status(500).json({ error: "Error al actualizar accesorio" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ DELETE - eliminar accesorio (por _id o por id personalizado)
+/**
+ *- Eliminar por _id o id personalizado
+ * DELETE /api/accessories/:id
+ */
 const deleteAccessory = async (req, res) => {
   try {
     const { id } = req.params;
-    let eliminado;
+    let deleted;
 
     if (mongoose.Types.ObjectId.isValid(id)) {
-      // Buscar por _id (ObjectId de Mongo)
-      eliminado = await Accessory.findByIdAndDelete(id);
+      deleted = await Accessory.findByIdAndDelete(id);
     } else {
-      // Buscar por el campo "id" personalizado
-      eliminado = await Accessory.findOneAndDelete({ id });
+      deleted = await Accessory.findOneAndDelete({ id });
     }
 
-    if (!eliminado) {
+    if (!deleted) {
       return res.status(404).json({ error: "Accesorio no encontrado" });
     }
 
-    console.log("🗑️ Accesorio eliminado:", eliminado.title || eliminado.id);
-    res
-      .status(200)
-      .json({ msg: "Accesorio eliminado correctamente", eliminado });
+    res.status(200).json({
+      message: "Accesorio eliminado correctamente",
+      deleted,
+    });
   } catch (error) {
     console.error("❌ Error al eliminar accesorio:", error);
-    res.status(500).json({ error: "Error al eliminar accesorio" });
+    res.status(500).json({ error: error.message });
   }
 };
 
 module.exports = {
   getAccessories,
+  getAccessoryById,
   createAccessory,
   updateAccessory,
   deleteAccessory,

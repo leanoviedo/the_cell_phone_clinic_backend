@@ -2,10 +2,11 @@
   "name": "the_cell_phone_clinic_backend",
   "version": "1.0.0",
   "description": "Backend de La Clínica del Celular - API con Express y MongoDB",
-  "main": "app.js",
+  "main": "server.js",
+  "type": "commonjs",
   "scripts": {
-    "dev": "nodemon app.js",
-    "start": "node app.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "keywords": [
     "express",
@@ -20,11 +21,10 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
-    "express": "^5.1.0",
+    "express": "^4.19.2",
     "mongoose": "^8.18.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
     "nodemon": "^3.1.10"
   }
 }
