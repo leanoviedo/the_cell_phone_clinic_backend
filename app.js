@@ -2,12 +2,12 @@ const express = require("express");
 const cors = require("cors");
 
 const phoneRoutes = require("./routes/phones");
-const accessoryRoutes = require("./routes/accesories");
+const accessoryRoutes = require("./routes/accessories"); 
 
 const app = express();
 
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
 app.use("/api/phones", phoneRoutes);
 app.use("/api/accessories", accessoryRoutes);

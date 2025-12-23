@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Accessory = require("../models/modelAccesories");
+const Accessory = require("../models/modelAccessories");
 
 /** busqueda con filtros
  * GET /api/accessories

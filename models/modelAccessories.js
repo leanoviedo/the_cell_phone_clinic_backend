@@ -15,4 +15,4 @@ const AccessorySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-module.exports = mongoose.model("Accessory", AccessorySchema, "accesories");
+module.exports = mongoose.model("Accessory", AccessorySchema, "accessories");
