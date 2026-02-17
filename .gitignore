@@ -1,3 +1,5 @@
 # dentro de .gitignore
 .env
 node_modules/
+.vercel
+.env*.local
