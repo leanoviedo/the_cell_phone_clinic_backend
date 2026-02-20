@@ -1,9 +1,6 @@
-// controllers/controllersOrders.js
+const { sendOrderEmail } = require("../services/mailer");
 const Order = require("../models/modelOrder");
 
-/* =======================
-   Crear orden
-======================= */
 const createOrder = async (req, res) => {
   try {
     const {
@@ -18,7 +15,6 @@ const createOrder = async (req, res) => {
       items,
     } = req.body;
 
-    // Validación básica
     if (
       !firstName ||
       !lastName ||
@@ -32,21 +28,21 @@ const createOrder = async (req, res) => {
     ) {
       return res.status(400).json({ error: "Datos incompletos" });
     }
-    // Calcular subtotal
+
     const subtotal = items.reduce(
       (acc, item) => acc + item.price * item.quantity,
       0,
     );
-    // Calcular costo de envío
+
     let shippingCost = 0;
     if (deliveryMethod === "domicilio") {
       shippingCost = subtotal > 1000 ? 0 : 15;
     }
+
     const totalAmount = subtotal + shippingCost;
 
     const year = new Date().getFullYear();
 
-    // Contar órdenes existentes de este año
     const countThisYear = await Order.countDocuments({
       orderNumber: { $regex: `ORD-${year}-` },
     });
@@ -70,6 +66,17 @@ const createOrder = async (req, res) => {
 
     const savedOrder = await newOrder.save();
 
+    sendOrderEmail(savedOrder)
+      .then(async () => {
+        savedOrder.emailSent = true;
+        await savedOrder.save();
+      })
+      .catch(async (mailError) => {
+        console.error("📧 Error enviando email:", mailError.message);
+        savedOrder.emailSent = false;
+        await savedOrder.save();
+      });
+
     res.status(201).json({
       message: "Orden creada correctamente",
       orderNumber: savedOrder.orderNumber,
@@ -80,6 +87,7 @@ const createOrder = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 const getOrders = async (_req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: 1 });
@@ -89,14 +97,17 @@ const getOrders = async (_req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 const deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
+
     const deleted = await Order.findByIdAndDelete(id);
 
     if (!deleted) {
       return res.status(404).json({ error: "Orden no encontrada" });
     }
+
     await reorderOrders();
 
     res.status(200).json({ message: "Orden eliminada y números reordenados" });
@@ -120,4 +131,75 @@ const reorderOrders = async () => {
   }
 };
 
-module.exports = { createOrder, getOrders, deleteOrder, reorderOrders };
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body;
+
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ error: "Orden no encontrada" });
+    }
+
+    if (action === "paid") {
+      if (order.isCancelled) {
+        return res.status(400).json({
+          error: "No se puede pagar una orden cancelada",
+        });
+      }
+
+      order.isPaid = true;
+      order.paidAt = new Date();
+    }
+
+    if (action === "preparing") {
+      if (!order.isPaid) {
+        return res.status(400).json({
+          error: "No se puede preparar una orden no pagada",
+        });
+      }
+
+      order.isPreparing = true;
+    }
+
+    if (action === "shipped") {
+      if (!order.isPaid) {
+        return res.status(400).json({
+          error: "No se puede enviar una orden no pagada",
+        });
+      }
+
+      order.isShipped = true;
+      order.shippedAt = new Date();
+    }
+
+    if (action === "cancelled") {
+      if (order.isShipped) {
+        return res.status(400).json({
+          error: "No se puede cancelar una orden enviada",
+        });
+      }
+
+      order.isCancelled = true;
+      order.cancelledAt = new Date();
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      message: "Estado actualizado correctamente",
+      order,
+    });
+  } catch (error) {
+    console.error("❌ Error actualizando estado:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  createOrder,
+  getOrders,
+  deleteOrder,
+  updateOrderStatus,
+};
