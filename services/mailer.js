@@ -1,106 +1,55 @@
-const nodemailer = require("nodemailer");
+import nodemailer from "nodemailer";
 
-/* =========================================
-   TRANSPORTER VERCEL + GMAIL FIX
-========================================= */
+let transporter;
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+function getTransporter() {
+  if (transporter) return transporter;
 
-  // 🔥 CLAVE PARA VERCEL
-  tls: {
-    rejectUnauthorized: false,
-  },
+  transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-});
+  console.log("✅ Transporter creado");
 
-/* =========================================
-   VERIFICAR SMTP
-========================================= */
+  return transporter;
+}
 
-transporter.verify((error) => {
-  if (error) {
-    console.error("❌ SMTP ERROR:", error);
-  } else {
-    console.log("✅ SMTP conectado correctamente");
-  }
-});
-
-/* =========================================
-   FORMATEAR PRECIO
-========================================= */
-
-const formatPrice = (value) =>
-  new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-  }).format(value);
-
-/* =========================================
-   ENVIAR EMAIL
-========================================= */
-
-const sendOrderEmail = async (order) => {
+export default async function handler(req, res) {
   try {
-    console.log("📧 Enviando email...");
+    const { firstName, lastName, email, message } =
+      typeof req.body === "string"
+        ? JSON.parse(req.body)
+        : req.body;
 
-    const { customer, orderNumber, items, subtotal, totalAmount, delivery } =
-      order;
+    const transporter = getTransporter();
 
-    const itemsHtml = items
-      .map(
-        (item) => `
-        <tr>
-          <td>${item.title}</td>
-          <td>${item.quantity}</td>
-          <td>${formatPrice(item.price)}</td>
-        </tr>
-      `
-      )
-      .join("");
+    const mailData = {
+      from: `"${firstName} ${lastName}" <${process.env.EMAIL_USER}>`,
+      replyTo: email,
+      to: process.env.EMAIL_USER,
+      subject: "📩 Nuevo mensaje",
+      text: message,
+      html: `<p>${message}</p>`,
+    };
 
-    const html = `
-      <h2>Gracias por tu compra ${customer.firstName} 🙌</h2>
-      <p>Orden: <strong>${orderNumber}</strong></p>
+    // ✅ nodemailer ya usa promises
+    await transporter.sendMail(mailData);
 
-      <table border="1" cellpadding="8" cellspacing="0">
-        <thead>
-          <tr>
-            <th>Producto</th>
-            <th>Cant.</th>
-            <th>Precio</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsHtml}
-        </tbody>
-      </table>
-
-      <p>Subtotal: ${formatPrice(subtotal)}</p>
-      <p>Envío: ${formatPrice(delivery.shippingCost)}</p>
-      <h3>Total: ${formatPrice(totalAmount)}</h3>
-    `;
-
-    const info = await transporter.sendMail({
-      from: `"La Clínica del Celular" <${process.env.EMAIL_USER}>`,
-      to: customer.email,
-      subject: `Confirmación de orden ${orderNumber}`,
-      html,
+    return res.status(200).json({
+      status: "OK",
+      message: "Email enviado",
     });
-
-    console.log("✅ Email enviado:", info.response);
   } catch (error) {
-    console.error("❌ ERROR REAL EMAIL:", error);
-    throw error;
-  }
-};
+    console.error("❌ Email error:", error);
 
-module.exports = { sendOrderEmail };
+    return res.status(500).json({
+      status: "ERROR",
+    });
+  }
+}
