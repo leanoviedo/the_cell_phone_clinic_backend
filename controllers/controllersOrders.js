@@ -1,6 +1,10 @@
 const { sendOrderEmail } = require("../services/mailer");
 const Order = require("../models/modelOrder");
 
+/* ============================
+   CREAR ORDEN
+============================ */
+
 const createOrder = async (req, res) => {
   try {
     const {
@@ -24,93 +28,86 @@ const createOrder = async (req, res) => {
       !deliveryMethod ||
       !items ||
       !Array.isArray(items) ||
-      items.length === 0
+      !items.length
     ) {
-      return res.status(400).json({ error: "Datos incompletos" });
+      return res.status(400).json({
+        error: "Datos incompletos",
+      });
     }
 
-    /* ======================
+    /* ============================
        CALCULOS
-    ====================== */
+    ============================ */
 
     const subtotal = items.reduce(
       (acc, item) => acc + item.price * item.quantity,
       0
     );
 
-    let shippingCost = 0;
-    if (deliveryMethod === "domicilio") {
-      shippingCost = subtotal > 1000 ? 0 : 15;
-    }
+    const shippingCost =
+      deliveryMethod === "domicilio" && subtotal <= 1000 ? 15 : 0;
 
     const totalAmount = subtotal + shippingCost;
 
-    /* ======================
-       NUMERO ORDEN
-    ====================== */
-
     const year = new Date().getFullYear();
 
-    const countThisYear = await Order.countDocuments({
+    const count = await Order.countDocuments({
       orderNumber: { $regex: `ORD-${year}-` },
     });
 
-    const formattedNumber = String(countThisYear + 1).padStart(4, "0");
-    const orderNumber = `ORD-${year}-${formattedNumber}`;
+    const orderNumber = `ORD-${year}-${String(
+      count + 1
+    ).padStart(4, "0")}`;
 
-    /* ======================
-       CREAR ORDEN
-    ====================== */
+    /* ============================
+       GUARDAR ORDEN
+    ============================ */
 
     const newOrder = new Order({
       orderNumber,
       customer: { firstName, lastName, dni, email, phone },
       delivery: {
         method: deliveryMethod,
-        address: deliveryMethod === "domicilio" ? address : undefined,
-        city: deliveryMethod === "domicilio" ? city : undefined,
+        address,
+        city,
         shippingCost,
       },
       items,
       subtotal,
       totalAmount,
+      emailSent: false,
     });
 
     const savedOrder = await newOrder.save();
 
-    /* ======================
-       ENVIAR EMAIL ✅
-    ====================== */
+    /* ============================
+       EMAIL ASYNC SEGURO
+    ============================ */
 
-    try {
-      console.log("📧 Enviando email...");
+    sendOrderEmail(savedOrder)
+      .then(async () => {
+        savedOrder.emailSent = true;
+        await savedOrder.save();
+        console.log("✅ Email marcado como enviado");
+      })
+      .catch(async (err) => {
+        console.error("📧 Falló email:", err.message);
+      });
 
-      await sendOrderEmail(savedOrder);
-
-      savedOrder.emailSent = true;
-      await savedOrder.save();
-
-      console.log("✅ Email enviado");
-    } catch (mailError) {
-      console.error("📧 Error enviando email:", mailError);
-
-      savedOrder.emailSent = false;
-      await savedOrder.save();
-    }
-
-    /* ======================
-       RESPUESTA FINAL
-    ====================== */
+    /* ============================
+       RESPUESTA API
+    ============================ */
 
     res.status(201).json({
       message: "Orden creada correctamente",
-      orderNumber: savedOrder.orderNumber,
+      orderNumber,
       orderId: savedOrder._id,
     });
-
   } catch (error) {
-    console.error("❌ Error al crear orden:", error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ CREATE ORDER ERROR:", error);
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
