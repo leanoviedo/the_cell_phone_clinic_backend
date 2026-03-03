@@ -1,9 +1,6 @@
-const { sendOrderEmail } = require("../services/mailer");
 const Order = require("../models/modelOrder");
-
-/* ============================
-   CREAR ORDEN
-============================ */
+const Counter = require("../models/Counter");
+const { sendOrderEmail } = require("../services/mailer");
 
 const createOrder = async (req, res) => {
   try {
@@ -30,14 +27,8 @@ const createOrder = async (req, res) => {
       !Array.isArray(items) ||
       !items.length
     ) {
-      return res.status(400).json({
-        error: "Datos incompletos",
-      });
+      return res.status(400).json({ error: "Datos incompletos" });
     }
-
-    /* ============================
-       CALCULOS
-    ============================ */
 
     const subtotal = items.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -51,17 +42,13 @@ const createOrder = async (req, res) => {
 
     const year = new Date().getFullYear();
 
-    const count = await Order.countDocuments({
-      orderNumber: { $regex: `ORD-${year}-` },
-    });
+    const counter = await Counter.findOneAndUpdate(
+      { name: `order-${year}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
 
-    const orderNumber = `ORD-${year}-${String(
-      count + 1
-    ).padStart(4, "0")}`;
-
-    /* ============================
-       GUARDAR ORDEN
-    ============================ */
+    const orderNumber = `ORD-${year}-${String(counter.seq).padStart(4, "0")}`;
 
     const newOrder = new Order({
       orderNumber,
@@ -80,37 +67,24 @@ const createOrder = async (req, res) => {
 
     const savedOrder = await newOrder.save();
 
-    /* ============================
-       EMAIL ASYNC SEGURO
-    ============================ */
-
-    sendOrderEmail(savedOrder)
-      .then(async () => {
-        savedOrder.emailSent = true;
-        await savedOrder.save();
-        console.log("✅ Email marcado como enviado");
-      })
-      .catch(async (err) => {
-        console.error("📧 Falló email:", err.message);
-      });
-
-    /* ============================
-       RESPUESTA API
-    ============================ */
-
     res.status(201).json({
-      message: "Orden creada correctamente",
+      success: true,
       orderNumber,
       orderId: savedOrder._id,
     });
+
+    try {
+      await sendOrderEmail(savedOrder);
+      savedOrder.emailSent = true;
+      await savedOrder.save();
+    } catch (err) {
+      console.error("Email error:", err.message);
+    }
+
   } catch (error) {
-    console.error("❌ CREATE ORDER ERROR:", error);
-    res.status(500).json({
-      error: error.message,
-    });
+    console.error("CREATE ORDER ERROR:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = {
-  createOrder,
-};
+module.exports = { createOrder };
