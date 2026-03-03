@@ -49,45 +49,10 @@ const OrderSchema = new mongoose.Schema(
     subtotal: { type: Number, required: true },
     totalAmount: { type: Number, required: true },
 
-    isPaid: {
-      type: Boolean,
-      default: false,
-    },
-
-    isRejected: {
-      type: Boolean,
-      default: false,
-    },
-
-    isRefunded: {
-      type: Boolean,
-      default: false,
-    },
-
-    paidAt: { type: Date },
-    paymentId: { type: String },
-
-    isPreparing: {
-      type: Boolean,
-      default: false,
-    },
-
-    isShipped: {
-      type: Boolean,
-      default: false,
-    },
-
-    isDelivered: {
-      type: Boolean,
-      default: false,
-    },
-
-    shippedAt: { type: Date },
-    deliveredAt: { type: Date },
-
-    isCancelled: {
-      type: Boolean,
-      default: false,
+    status: {
+      type: String,
+      enum: ["pendiente", "preparando", "enviado", "entregado", "cancelado"],
+      default: "pendiente",
     },
 
     cancelledAt: { type: Date },
@@ -97,7 +62,7 @@ const OrderSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Order", OrderSchema, "orders");
