@@ -55,8 +55,6 @@ const OrderSchema = new mongoose.Schema(
       default: "pendiente",
     },
 
-    cancelledAt: { type: Date },
-
     emailSent: {
       type: Boolean,
       default: false,
@@ -65,4 +63,4 @@ const OrderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Order", OrderSchema, "orders");
+module.exports = mongoose.model("Order", OrderSchema);
