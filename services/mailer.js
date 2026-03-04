@@ -1,23 +1,18 @@
 const nodemailer = require("nodemailer");
 
-let transporter; // 👈 variable global para reutilizar conexión
+let transporter;
 
 function getTransporter() {
   if (transporter) return transporter;
 
   transporter = nodemailer.createTransport({
     service: "gmail",
-    secure: true,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
   });
 
-  console.log("✅ Transporter creado");
   return transporter;
 }
 
@@ -29,14 +24,8 @@ function formatPrice(amount) {
 }
 
 const sendOrderEmail = async (order) => {
-  const {
-    customer,
-    orderNumber,
-    items,
-    subtotal,
-    totalAmount,
-    delivery,
-  } = order;
+  const { customer, orderNumber, items, subtotal, totalAmount, delivery } =
+    order;
 
   const itemsHtml = items
     .map(
@@ -52,15 +41,14 @@ const sendOrderEmail = async (order) => {
             ${formatPrice(item.price)}
           </td>
         </tr>
-      `
+      `,
     )
     .join("");
 
   const html = `
     <div style="background:#f4f4f4; padding:40px 20px; font-family:Arial, sans-serif;">
       <div style="max-width:600px; margin:auto; background:white; padding:30px; border-radius:10px;">
-
-        <div style="text-align:center; margin-bottom:20px;">
+         <div style="text-align:center; margin-bottom:20px;">
           <img 
             src="https://leanoviedo-the-cell-phone-clinic.vercel.app/images/imageslogodog.jpeg" 
             width="140" 
@@ -73,12 +61,16 @@ const sendOrderEmail = async (order) => {
 
         <hr style="border:none; border-top:1px solid #eee; margin:20px 0;" />
 
-        <h3>Gracias por tu compra ${customer.firstName} 🙌</h3>
+        <h3 style="margin-bottom:10px;">
+        Gracias por tu compra ${customer.firstName} 🙌</h3>
 
-        <p>Tu orden <strong>${orderNumber}</strong> fue creada correctamente.</p>
+        <h3 style="color:#555; font-size:15px; font-weight:bold;">
+          Tu orden <strong>${orderNumber}</strong> fue creada correctamente.
+        </h3>
 
-        <table width="100%" style="border-collapse:collapse; margin-top:20px; font-size:14px;">
-          <thead>
+        <table width="100%" style="border-collapse:collapse; margin-top:20px; font-size:16px;">
+          ${itemsHtml}
+       <thead>
             <tr style="background:#fafafa;">
               <th align="left" style="padding:10px;">Producto</th>
               <th align="left" style="padding:10px;">Cant.</th>
@@ -90,20 +82,20 @@ const sendOrderEmail = async (order) => {
           </tbody>
         </table>
 
-        <div style="margin-top:25px; font-size:15px;">
+        <div style="margin-top:25px; font-size:16px;">
           <p><strong>Subtotal:</strong> ${formatPrice(subtotal)}</p>
           <p><strong>Envío:</strong> ${formatPrice(delivery.shippingCost)}</p>
           <h3><strong>Total:</strong> ${formatPrice(totalAmount)}</h3>
         </div>
 
-        <p>
+        <h3 style="color:#555;">
           Método de entrega: ${delivery.method}
           ${
             delivery.method === "envio a domicilio"
               ? `<br/>Dirección: ${delivery.address}, ${delivery.city}`
               : ""
           }
-        </p>
+        </h3>
 
         <div style="text-align:center; margin-top:30px;">
           <a 
@@ -133,14 +125,12 @@ const sendOrderEmail = async (order) => {
 
   const transporter = getTransporter();
 
-  console.time("EMAIL");
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `"La Clínica del Celular" <${process.env.EMAIL_USER}>`,
     to: customer.email,
     subject: `Tu orden ${orderNumber} ha sido creada`,
     html,
   });
-  console.timeEnd("EMAIL");
 
   return info;
 };
