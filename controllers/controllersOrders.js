@@ -16,6 +16,7 @@ const createOrder = async (req, res) => {
       items,
     } = req.body;
 
+    // Validación
     if (
       !firstName ||
       !lastName ||
@@ -30,9 +31,10 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ error: "Datos incompletos" });
     }
 
+    // Cálculos
     const subtotal = items.reduce(
       (acc, item) => acc + item.price * item.quantity,
-      0
+      0,
     );
 
     const shippingCost =
@@ -40,16 +42,18 @@ const createOrder = async (req, res) => {
 
     const totalAmount = subtotal + shippingCost;
 
+    // Generar número de orden
     const year = new Date().getFullYear();
 
     const counter = await Counter.findOneAndUpdate(
       { name: `order-${year}` },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     const orderNumber = `ORD-${year}-${String(counter.seq).padStart(4, "0")}`;
 
+    // Crear orden
     const newOrder = new Order({
       orderNumber,
       customer: { firstName, lastName, dni, email, phone },
@@ -67,23 +71,26 @@ const createOrder = async (req, res) => {
 
     const savedOrder = await newOrder.save();
 
+    // ✅ Responder inmediatamente
     res.status(201).json({
       success: true,
       orderNumber,
       orderId: savedOrder._id,
     });
 
-    try {
-      await sendOrderEmail(savedOrder);
-      savedOrder.emailSent = true;
-      await savedOrder.save();
-    } catch (err) {
-      console.error("Email error:", err.message);
-    }
-
-  } catch (error) {
-    console.error("CREATE ORDER ERROR:", error);
-    res.status(500).json({ error: error.message });
+    // ✅ Enviar email en segundo plano
+    setImmediate(async () => {
+      try {
+        await sendOrderEmail(savedOrder);
+        await Order.updateOne({ _id: savedOrder._id }, { emailSent: true });
+        console.log("📧 Email enviado correctamente");
+      } catch (err) {
+        console.error("Email error:", err.message);
+      }
+    });
+  } catch (err) {
+    console.error("Order creation error:", err.message);
+    res.status(500).json({ error: "Error al crear la orden" });
   }
 };
 
