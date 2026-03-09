@@ -6,13 +6,22 @@ const sendOrderEmail = require("../services/mailer");
 
 const createOrder = async (req, res) => {
 
-  console.log("====================================");
-  console.log("INICIO createOrder");
+  const requestId = Math.random().toString(36).substring(2, 10);
+  const startTime = Date.now();
+
+  console.log("=================================================");
+  console.log("📦 CREATE ORDER REQUEST");
+  console.log("RequestID:", requestId);
   console.log("Hora servidor:", new Date().toISOString());
+  console.log("IP:", req.headers["x-forwarded-for"] || req.socket.remoteAddress);
+  console.log("UserAgent:", req.headers["user-agent"]);
 
   try {
 
-    console.log("Body recibido:", JSON.stringify(req.body, null, 2));
+    console.log("-------------------------------------------------");
+    console.log("📥 BODY RECIBIDO");
+
+    console.log(JSON.stringify(req.body, null, 2));
 
     const {
       firstName,
@@ -26,7 +35,25 @@ const createOrder = async (req, res) => {
       items,
     } = req.body;
 
-    console.log("Validando datos obligatorios...");
+    /*
+    ========================
+    VALIDACION
+    ========================
+    */
+
+    console.log("-------------------------------------------------");
+    console.log("🔎 Validando datos obligatorios...");
+
+    if (!firstName) console.log("❌ Falta firstName");
+    if (!lastName) console.log("❌ Falta lastName");
+    if (!dni) console.log("❌ Falta dni");
+    if (!email) console.log("❌ Falta email");
+    if (!phone) console.log("❌ Falta phone");
+    if (!deliveryMethod) console.log("❌ Falta deliveryMethod");
+
+    if (!items) console.log("❌ items es undefined");
+    if (!Array.isArray(items)) console.log("❌ items no es array");
+    if (Array.isArray(items) && items.length === 0) console.log("❌ items vacío");
 
     if (
       !firstName ||
@@ -40,8 +67,11 @@ const createOrder = async (req, res) => {
       !items.length
     ) {
 
-      console.log("❌ Validación fallida");
-      return res.status(400).json({ error: "Datos incompletos" });
+      console.log("❌ VALIDACION FALLIDA");
+
+      return res.status(400).json({
+        error: "Datos incompletos",
+      });
 
     }
 
@@ -53,21 +83,26 @@ const createOrder = async (req, res) => {
     ========================
     */
 
-    console.log("Calculando subtotal...");
+    console.log("-------------------------------------------------");
+    console.log("💰 Calculando subtotal...");
 
-    const subtotal = items.reduce((acc, item) => {
+    const subtotal = items.reduce((acc, item, index) => {
+
+      if (!item.price || !item.quantity) {
+        console.log("⚠️ Item inválido:", item);
+      }
 
       const lineTotal = item.price * item.quantity;
 
       console.log(
-        `Producto: ${item.title} | Precio: ${item.price} | Cantidad: ${item.quantity} | Total: ${lineTotal}`
+        `Item ${index + 1} -> ${item.title} | Precio: ${item.price} | Cantidad: ${item.quantity} | Total: ${lineTotal}`
       );
 
       return acc + lineTotal;
 
     }, 0);
 
-    console.log("Subtotal calculado:", subtotal);
+    console.log("Subtotal:", subtotal);
 
     const shippingCost = deliveryMethod === "domicilio" ? 15000 : 0;
 
@@ -83,7 +118,8 @@ const createOrder = async (req, res) => {
     ========================
     */
 
-    console.log("Generando número de orden...");
+    console.log("-------------------------------------------------");
+    console.log("🔢 Generando número de orden");
 
     const year = new Date().getFullYear();
 
@@ -95,11 +131,11 @@ const createOrder = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    console.log("Contador obtenido:", counter.seq);
+    console.log("Contador actual:", counter.seq);
 
     const orderNumber = `ORD-${year}-${String(counter.seq).padStart(4, "0")}`;
 
-    console.log("Número de orden generado:", orderNumber);
+    console.log("Número de orden:", orderNumber);
 
     /*
     ========================
@@ -107,7 +143,8 @@ const createOrder = async (req, res) => {
     ========================
     */
 
-    console.log("Guardando orden en MongoDB...");
+    console.log("-------------------------------------------------");
+    console.log("💾 Guardando orden en MongoDB");
 
     const newOrder = new Order({
       orderNumber,
@@ -135,8 +172,8 @@ const createOrder = async (req, res) => {
 
     const savedOrder = await newOrder.save();
 
-    console.log("✅ Orden guardada correctamente");
-    console.log("ID Mongo:", savedOrder._id);
+    console.log("✅ Orden guardada en MongoDB");
+    console.log("MongoID:", savedOrder._id);
 
     /*
     ========================
@@ -144,25 +181,26 @@ const createOrder = async (req, res) => {
     ========================
     */
 
-    console.log("Preparando envío de email...");
+    console.log("-------------------------------------------------");
+    console.log("📨 Iniciando envío de email");
 
     try {
 
-      console.log("Llamando a sendOrderEmail()");
+      console.log("Llamando sendOrderEmail()");
 
       await sendOrderEmail(savedOrder);
 
-      console.log("✅ Email enviado correctamente");
+      console.log("✅ Email enviado");
 
       savedOrder.emailSent = true;
 
       await savedOrder.save();
 
-      console.log("Estado emailSent actualizado en DB");
+      console.log("Estado emailSent actualizado");
 
     } catch (emailError) {
 
-      console.log("❌ ERROR enviando email");
+      console.log("❌ ERROR EMAIL");
 
       console.log("Mensaje:", emailError.message);
 
@@ -170,7 +208,20 @@ const createOrder = async (req, res) => {
 
     }
 
-    console.log("Enviando respuesta al frontend");
+    /*
+    ========================
+    RESPUESTA
+    ========================
+    */
+
+    const endTime = Date.now();
+
+    console.log("-------------------------------------------------");
+    console.log("🚀 RESPUESTA AL FRONTEND");
+
+    console.log("OrderNumber:", orderNumber);
+    console.log("Tiempo ejecución:", endTime - startTime, "ms");
+    console.log("RequestID:", requestId);
 
     return res.status(201).json({
       success: true,
@@ -180,7 +231,10 @@ const createOrder = async (req, res) => {
 
   } catch (err) {
 
+    console.log("=================================================");
     console.log("❌ ERROR CRÍTICO EN CREATE ORDER");
+
+    console.log("RequestID:", requestId);
 
     console.log("Mensaje:", err.message);
 
@@ -193,4 +247,5 @@ const createOrder = async (req, res) => {
   }
 
 };
+
 module.exports = { createOrder };
