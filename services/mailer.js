@@ -1,35 +1,57 @@
 const nodemailer = require("nodemailer");
 
-let transporter;
-
-function getTransporter() {
-  if (transporter) return transporter;
-
-  transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  return transporter;
-}
-
-function formatPrice(amount) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-  }).format(amount);
-}
+const formatPrice = (price) => {
+  return `$${Number(price).toLocaleString("es-AR")}`;
+};
 
 const sendOrderEmail = async (order) => {
-  const { customer, orderNumber, items, subtotal, totalAmount, delivery } =
-    order;
+  console.log("====================================");
+  console.log("INICIANDO SERVICIO MAILER");
 
-  const itemsHtml = items
-    .map(
-      (item) => `
+  try {
+    console.log("Variables de entorno:");
+
+    console.log("ENV EMAIL_USER:", process.env.EMAIL_USER);
+    console.log(
+      "ENV EMAIL_PASS:",
+      process.env.EMAIL_PASS ? "CARGADO" : "NO CARGADO",
+    );
+    console.log(
+      "ENV MONGODB_URI:",
+      process.env.MONGODB_URI ? "CARGADO" : "NO CARGADO",
+    );
+
+    console.log("Creando transporter Gmail...");
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    console.log("Verificando conexión SMTP...");
+
+    try {
+      await transporter.verify();
+      console.log("✅ Servidor SMTP listo");
+    } catch (smtpError) {
+      console.log("❌ Error SMTP:", smtpError);
+      throw smtpError;
+    }
+
+    console.log("Transporter creado");
+
+    console.log("Email destino:", order.customer.email);
+
+    console.log("Mapeando items de la orden a HTML...");
+
+    const itemsHtml = order.items
+      .map((item) => {
+        console.log(`Procesando item: ${item.title} x ${item.quantity}`);
+
+        return `
         <tr>
           <td style="padding:10px; border-bottom:1px solid #eee;">
             ${item.title}
@@ -41,14 +63,19 @@ const sendOrderEmail = async (order) => {
             ${formatPrice(item.price)}
           </td>
         </tr>
-      `,
-    )
-    .join("");
+        `;
+      })
+      .join("");
 
-  const html = `
+    console.log("HTML de items generado");
+
+    console.log("Construyendo plantilla HTML final...");
+
+    const html = `
     <div style="background:#f4f4f4; padding:40px 20px; font-family:Arial, sans-serif;">
       <div style="max-width:600px; margin:auto; background:white; padding:30px; border-radius:10px;">
-         <div style="text-align:center; margin-bottom:20px;">
+        
+        <div style="text-align:center; margin-bottom:20px;">
           <img 
             src="https://leanoviedo-the-cell-phone-clinic.vercel.app/images/imageslogodog.jpeg" 
             width="140" 
@@ -62,15 +89,15 @@ const sendOrderEmail = async (order) => {
         <hr style="border:none; border-top:1px solid #eee; margin:20px 0;" />
 
         <h3 style="margin-bottom:10px;">
-        Gracias por tu compra ${customer.firstName} 🙌</h3>
+          Gracias por tu compra ${order.customer.firstName} 🙌
+        </h3>
 
         <h3 style="color:#555; font-size:15px; font-weight:bold;">
-          Tu orden <strong>${orderNumber}</strong> fue creada correctamente.
+          Tu orden <strong>${order.orderNumber}</strong> fue creada correctamente.
         </h3>
 
         <table width="100%" style="border-collapse:collapse; margin-top:20px; font-size:16px;">
-          ${itemsHtml}
-       <thead>
+          <thead>
             <tr style="background:#fafafa;">
               <th align="left" style="padding:10px;">Producto</th>
               <th align="left" style="padding:10px;">Cant.</th>
@@ -83,16 +110,16 @@ const sendOrderEmail = async (order) => {
         </table>
 
         <div style="margin-top:25px; font-size:16px;">
-          <p><strong>Subtotal:</strong> ${formatPrice(subtotal)}</p>
-          <p><strong>Envío:</strong> ${formatPrice(delivery.shippingCost)}</p>
-          <h3><strong>Total:</strong> ${formatPrice(totalAmount)}</h3>
+          <p><strong>Subtotal:</strong> ${formatPrice(order.subtotal)}</p>
+          <p><strong>Envío:</strong> ${formatPrice(order.delivery.shippingCost)}</p>
+          <h3><strong>Total:</strong> ${formatPrice(order.totalAmount)}</h3>
         </div>
 
         <h3 style="color:#555;">
-          Método de entrega: ${delivery.method}
+          Método de entrega: ${order.delivery.method}
           ${
-            delivery.method === "envio a domicilio"
-              ? `<br/>Dirección: ${delivery.address}, ${delivery.city}`
+            order.delivery.method === "envio a domicilio"
+              ? `<br/>Dirección: ${order.delivery.address}, ${order.delivery.city}`
               : ""
           }
         </h3>
@@ -121,18 +148,40 @@ const sendOrderEmail = async (order) => {
 
       </div>
     </div>
-  `;
+    `;
 
-  const transporter = getTransporter();
+    console.log("Cuerpo HTML finalizado");
 
-  const info = await transporter.sendMail({
-    from: `"La Clínica del Celular" <${process.env.EMAIL_USER}>`,
-    to: customer.email,
-    subject: `Tu orden ${orderNumber} ha sido creada`,
-    html,
-  });
+    // SI QUIERES VER EL EMAIL COMPLETO EN CONSOLA
+    console.log("====== HTML EMAIL ======");
+    console.log(html);
+    console.log("========================");
 
-  return info;
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: order.customer.email,
+      subject: `Tu orden ${order.orderNumber} en La Clínica del Celular`,
+      html,
+    };
+
+    console.log("Enviando email con mailOptions:", {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      htmlLength: mailOptions.html.length,
+    });
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ Email enviado correctamente");
+    console.log("MessageId:", info.messageId);
+  } catch (error) {
+    console.log("❌ ERROR EN MAILER");
+    console.log("Mensaje:", error.message);
+    console.log("Stack:", error.stack);
+
+    throw error;
+  }
 };
 
-module.exports = { sendOrderEmail };
+module.exports = sendOrderEmail;
