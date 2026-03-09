@@ -5,23 +5,36 @@ const formatPrice = (price) => {
 };
 
 const sendOrderEmail = async (order) => {
-  console.log("====================================");
-  console.log("INICIANDO SERVICIO MAILER");
+
+  console.log("=================================================");
+  console.log("📨 INICIANDO SERVICIO MAILER");
+
+  const startTime = Date.now();
 
   try {
-    console.log("Variables de entorno:");
 
-    console.log("ENV EMAIL_USER:", process.env.EMAIL_USER);
-    console.log(
-      "ENV EMAIL_PASS:",
-      process.env.EMAIL_PASS ? "CARGADO" : "NO CARGADO",
-    );
-    console.log(
-      "ENV MONGODB_URI:",
-      process.env.MONGODB_URI ? "CARGADO" : "NO CARGADO",
-    );
+    console.log("📦 Datos de orden recibidos");
 
-    console.log("Creando transporter Gmail...");
+    if (!order) {
+      console.log("❌ ERROR: order es undefined");
+      throw new Error("Order undefined");
+    }
+
+    console.log("OrderNumber:", order.orderNumber);
+    console.log("Cliente:", order.customer?.firstName);
+    console.log("Email cliente:", order.customer?.email);
+
+    console.log("Cantidad de items:", order.items?.length);
+
+    console.log("====================================");
+    console.log("🔐 Variables de entorno");
+
+    console.log("EMAIL_USER:", process.env.EMAIL_USER);
+    console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "CARGADO" : "NO CARGADO");
+    console.log("MONGODB_URI:", process.env.MONGODB_URI ? "CARGADO" : "NO CARGADO");
+
+    console.log("====================================");
+    console.log("📡 Creando transporter Gmail...");
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -31,25 +44,32 @@ const sendOrderEmail = async (order) => {
       },
     });
 
-    console.log("Verificando conexión SMTP...");
+    console.log("🔎 Verificando conexión SMTP...");
 
     try {
+
       await transporter.verify();
+
       console.log("✅ Servidor SMTP listo");
+
     } catch (smtpError) {
-      console.log("❌ Error SMTP:", smtpError);
+
+      console.log("❌ ERROR SMTP");
+      console.log(smtpError);
+
       throw smtpError;
+
     }
 
-    console.log("Transporter creado");
+    console.log("====================================");
+    console.log("📨 Preparando email para:", order.customer.email);
 
-    console.log("Email destino:", order.customer.email);
-
-    console.log("Mapeando items de la orden a HTML...");
+    console.log("Mapeando items...");
 
     const itemsHtml = order.items
       .map((item) => {
-        console.log(`Procesando item: ${item.title} x ${item.quantity}`);
+
+        console.log(`Item -> ${item.title} | Cantidad: ${item.quantity} | Precio: ${item.price}`);
 
         return `
         <tr>
@@ -64,12 +84,13 @@ const sendOrderEmail = async (order) => {
           </td>
         </tr>
         `;
+
       })
       .join("");
 
-    console.log("HTML de items generado");
+    console.log("✅ HTML items generado");
 
-    console.log("Construyendo plantilla HTML final...");
+    console.log("Construyendo HTML final...");
 
     const html = `
     <div style="background:#f4f4f4; padding:40px 20px; font-family:Arial, sans-serif;">
@@ -88,20 +109,18 @@ const sendOrderEmail = async (order) => {
 
         <hr style="border:none; border-top:1px solid #eee; margin:20px 0;" />
 
-        <h3 style="margin-bottom:10px;">
-          Gracias por tu compra ${order.customer.firstName} 🙌
-        </h3>
+        <h3>Gracias por tu compra ${order.customer.firstName} 🙌</h3>
 
-        <h3 style="color:#555; font-size:15px; font-weight:bold;">
+        <h3 style="color:#555; font-size:15px;">
           Tu orden <strong>${order.orderNumber}</strong> fue creada correctamente.
         </h3>
 
-        <table width="100%" style="border-collapse:collapse; margin-top:20px; font-size:16px;">
+        <table width="100%" style="border-collapse:collapse; margin-top:20px;">
           <thead>
             <tr style="background:#fafafa;">
-              <th align="left" style="padding:10px;">Producto</th>
-              <th align="left" style="padding:10px;">Cant.</th>
-              <th align="left" style="padding:10px;">Precio</th>
+              <th align="left">Producto</th>
+              <th align="left">Cant.</th>
+              <th align="left">Precio</th>
             </tr>
           </thead>
           <tbody>
@@ -109,13 +128,13 @@ const sendOrderEmail = async (order) => {
           </tbody>
         </table>
 
-        <div style="margin-top:25px; font-size:16px;">
+        <div style="margin-top:25px;">
           <p><strong>Subtotal:</strong> ${formatPrice(order.subtotal)}</p>
           <p><strong>Envío:</strong> ${formatPrice(order.delivery.shippingCost)}</p>
           <h3><strong>Total:</strong> ${formatPrice(order.totalAmount)}</h3>
         </div>
 
-        <h3 style="color:#555;">
+        <h3>
           Método de entrega: ${order.delivery.method}
           ${
             order.delivery.method === "envio a domicilio"
@@ -124,38 +143,14 @@ const sendOrderEmail = async (order) => {
           }
         </h3>
 
-        <div style="text-align:center; margin-top:30px;">
-          <a 
-            href="https://leanoviedo-the-cell-phone-clinic.vercel.app" 
-            target="_blank"
-            style="
-              background:#000;
-              color:#fff;
-              padding:12px 25px;
-              text-decoration:none;
-              border-radius:6px;
-              display:inline-block;
-            "
-          >
-            Visitar tienda
-          </a>
-        </div>
-
-        <p style="margin-top:40px; font-size:12px; color:#999; text-align:center;">
-          © 2026 La Clínica del Celular<br/>
-          Gracias por confiar en nosotros.
-        </p>
-
       </div>
     </div>
     `;
 
-    console.log("Cuerpo HTML finalizado");
+    console.log("✅ HTML final construido");
 
-    // SI QUIERES VER EL EMAIL COMPLETO EN CONSOLA
-    console.log("====== HTML EMAIL ======");
-    console.log(html);
-    console.log("========================");
+    console.log("====================================");
+    console.log("📤 Preparando envío de email");
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -164,24 +159,44 @@ const sendOrderEmail = async (order) => {
       html,
     };
 
-    console.log("Enviando email con mailOptions:", {
+    console.log("MailOptions:");
+
+    console.log({
       from: mailOptions.from,
       to: mailOptions.to,
       subject: mailOptions.subject,
       htmlLength: mailOptions.html.length,
     });
 
+    console.log("====================================");
+    console.log("🚀 Enviando email...");
+
     const info = await transporter.sendMail(mailOptions);
 
-    console.log("✅ Email enviado correctamente");
+    const endTime = Date.now();
+
+    console.log("✅ EMAIL ENVIADO CORRECTAMENTE");
+
     console.log("MessageId:", info.messageId);
+
+    console.log("Tiempo de envío:", endTime - startTime, "ms");
+
   } catch (error) {
+
+    console.log("====================================");
     console.log("❌ ERROR EN MAILER");
+
     console.log("Mensaje:", error.message);
+
     console.log("Stack:", error.stack);
 
+    console.log("Datos de orden que causaron error:");
+    console.log(JSON.stringify(order, null, 2));
+
     throw error;
+
   }
+
 };
 
 module.exports = sendOrderEmail;
