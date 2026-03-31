@@ -62,13 +62,8 @@ const createOrder = async (req, res) => {
       0
     );
 
-    const shippingCost =
-      delivery.method === "domicilio"
-        ? subtotal >= 1000
-          ? 0
-          : 25000
-        : 0;
-
+const shippingCost =
+  delivery.method === "domicilio"  ? 25000 : 0;
     const totalAmount = subtotal + shippingCost;
 
     console.log("Subtotal:", subtotal);
@@ -91,7 +86,9 @@ const createOrder = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    const orderNumber = `ORD-${year}-${String(counter.seq).padStart(5, "0")}`;
+   const seq = counter?.seq || 1;
+
+const orderNumber = `ORD-${year}-${String(seq).padStart(5, "0")}`;
 
     console.log("Número generado:", orderNumber);
 

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Order = require("../models/modelOrder");
+const Counter = require("../models/Counter");
 const sendOrderEmail = require("../services/mailer");
 
 // ==============================
@@ -8,53 +9,134 @@ const sendOrderEmail = require("../services/mailer");
 // ==============================
 
 router.post("/", async (req, res) => {
+  const requestId = Date.now();
+
   console.log("================================");
-  console.log("📦 POST /api/orders recibido");
-  console.log("Body recibido:", JSON.stringify(req.body, null, 2));
+  console.log("📦 POST /api/orders");
+  console.log("RequestID:", requestId);
+  console.log("Body:", JSON.stringify(req.body, null, 2));
 
   try {
-    console.log("Creando nueva orden...");
+    const { customer, delivery, items } = req.body;
 
-    const order = new Order(req.body);
+    // ========================
+    // VALIDACION
+    // ========================
+    if (
+      !customer?.firstName ||
+      !customer?.lastName ||
+      !customer?.dni ||
+      !customer?.email ||
+      !customer?.phone
+    ) {
+      return res.status(400).json({
+        error: "Datos de cliente incompletos",
+      });
+    }
 
-    // 🔥 SOLUCIÓN CLAVE → generar orderNumber
-    order.orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    if (!delivery?.method) {
+      return res.status(400).json({
+        error: "Método de entrega requerido",
+      });
+    }
 
-    console.log("Número de orden generado:", order.orderNumber);
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        error: "Items inválidos",
+      });
+    }
 
-    console.log("Guardando orden en MongoDB...");
+    // ========================
+    // CALCULOS
+    // ========================
+    const subtotal = items.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0,
+    );
 
-    await order.save();
+    const shippingCost =
+      delivery.method === "domicilio" ? (subtotal >= 1000 ? 0 : 25000) : 0;
 
-    console.log("✅ Orden guardada en producción");
-    console.log("🧾 OrderNumber:", order.orderNumber);
-    console.log("👤 Cliente:", order.customer.email);
+    const totalAmount = subtotal + shippingCost;
 
+    console.log("Subtotal:", subtotal);
+    console.log("Envío:", shippingCost);
+    console.log("Total:", totalAmount);
+
+    // ========================
+    // NUMERO DE ORDEN
+    // ========================
+    const year = new Date().getFullYear();
+
+    const counter = await Counter.findOneAndUpdate(
+      { name: `order-${year}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true },
+    );
+
+    const orderNumber = `ORD-${year}-${String(counter.seq).padStart(5, "0")}`;
+
+    console.log("OrderNumber:", orderNumber);
+
+    // ========================
+    // GUARDAR
+    // ========================
+    const newOrder = new Order({
+      orderNumber,
+      customer,
+      delivery: {
+        ...delivery,
+        shippingCost,
+      },
+      items,
+      subtotal,
+      totalAmount,
+      emailSent: false,
+    });
+
+    const savedOrder = await newOrder.save();
+
+    console.log("✅ Orden guardada:", savedOrder._id);
+
+    // ========================
+    // EMAIL (aislado para no romper)
+    // ========================
     try {
-      console.log("📨 Intentando enviar email a:", order.customer.email);
+      console.log("📨 Enviando email a:", savedOrder.customer.email);
 
-      await sendOrderEmail(order);
+      await sendOrderEmail(savedOrder);
 
-      console.log("✅ Email enviado correctamente a:", order.customer.email);
+      savedOrder.emailSent = true;
+      await savedOrder.save();
+
+      console.log("✅ Email enviado");
     } catch (emailError) {
       console.log("❌ Error enviando email:");
       console.log(emailError.message);
     }
 
-    console.log("Enviando respuesta al frontend");
-
-    res.status(201).json({
-      message: "Orden creada correctamente",
-      order,
+    // ========================
+    // RESPUESTA
+    // ========================
+    return res.status(201).json({
+      success: true,
+      orderNumber,
+      orderId: savedOrder._id,
     });
   } catch (error) {
+    console.log("================================");
     console.log("❌ ERROR CREANDO ORDEN");
+    console.log("RequestID:", requestId);
     console.log("Mensaje:", error.message);
     console.log("Stack:", error.stack);
 
-    res.status(500).json({
-      error: error.message, // 👈 importante para debug
+    console.log("📦 Datos que rompieron:");
+    console.log(JSON.stringify(req.body, null, 2));
+
+    return res.status(500).json({
+      error: error.message,
     });
   }
 });
+
 module.exports = router;
