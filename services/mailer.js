@@ -5,14 +5,12 @@ const formatPrice = (price) => {
 };
 
 const sendOrderEmail = async (order) => {
-
   console.log("=================================================");
   console.log("📨 INICIANDO SERVICIO MAILER");
 
   const startTime = Date.now();
 
   try {
-
     console.log("📦 Datos de orden recibidos");
 
     if (!order) {
@@ -30,8 +28,14 @@ const sendOrderEmail = async (order) => {
     console.log("🔐 Variables de entorno");
 
     console.log("EMAIL_USER:", process.env.EMAIL_USER);
-    console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "CARGADO" : "NO CARGADO");
-    console.log("MONGODB_URI:", process.env.MONGODB_URI ? "CARGADO" : "NO CARGADO");
+    console.log(
+      "EMAIL_PASS:",
+      process.env.EMAIL_PASS ? "CARGADO" : "NO CARGADO",
+    );
+    console.log(
+      "MONGODB_URI:",
+      process.env.MONGODB_URI ? "CARGADO" : "NO CARGADO",
+    );
 
     console.log("====================================");
     console.log("📡 Creando transporter Gmail...");
@@ -47,20 +51,20 @@ const sendOrderEmail = async (order) => {
     console.log("🔎 Verificando conexión SMTP...");
 
     try {
-
       await transporter.verify();
 
       console.log("✅ Servidor SMTP listo");
-
     } catch (smtpError) {
-
       console.log("❌ ERROR SMTP");
       console.log(smtpError);
 
       throw smtpError;
-
     }
-
+    const getDeliveryLabel = (method) => {
+      if (method === "local") return "Retiro en local";
+      if (method === "domicilio") return "Envío a domicilio";
+      return method;
+    };
     console.log("====================================");
     console.log("📨 Preparando email para:", order.customer.email);
 
@@ -68,23 +72,23 @@ const sendOrderEmail = async (order) => {
 
     const itemsHtml = order.items
       .map((item) => {
-
-        console.log(`Item -> ${item.title} | Cantidad: ${item.quantity} | Precio: ${item.price}`);
+        console.log(
+          `Item -> ${item.title} | Cantidad: ${item.quantity} | Precio: ${item.price}`,
+        );
 
         return `
-        <tr>
-          <td style="padding:10px; border-bottom:1px solid #eee;">
-            ${item.title}
-          </td>
-          <td style="padding:10px; border-bottom:1px solid #eee;">
-            ${item.quantity}
-          </td>
-          <td style="padding:10px; border-bottom:1px solid #eee;">
-            ${formatPrice(item.price)}
-          </td>
-        </tr>
-        `;
-
+<tr style="border-bottom:1px solid #eee;">
+  <td style="padding:12px; font-weight:500; color:#111;">
+    ${item.title}
+  </td>
+  <td align="center" style="padding:12px; color:#555;">
+    ${item.quantity}
+  </td>
+  <td align="right" style="padding:12px; font-weight:bold; color:#111;">
+    ${formatPrice(item.price)}
+  </td>
+</tr>
+`;
       })
       .join("");
 
@@ -117,31 +121,37 @@ const sendOrderEmail = async (order) => {
 
         <table width="100%" style="border-collapse:collapse; margin-top:20px;">
           <thead>
-            <tr style="background:#fafafa;">
-              <th align="left">Producto</th>
-              <th align="left">Cant.</th>
-              <th align="left">Precio</th>
-            </tr>
-          </thead>
+  <tr style="background:#f1f5f9; text-transform:uppercase; font-size:12px; letter-spacing:1px; color:#555;">
+    <th align="left" style="padding:12px;">Producto</th>
+    <th align="center" style="padding:12px;">Cant.</th>
+    <th align="right" style="padding:12px;">Precio</th>
+  </tr>
+</thead>
           <tbody>
             ${itemsHtml}
           </tbody>
         </table>
 
-        <div style="margin-top:25px;">
-          <p><strong>Subtotal:</strong> ${formatPrice(order.subtotal)}</p>
-          <p><strong>Envío:</strong> ${formatPrice(order.delivery.shippingCost)}</p>
-          <h3><strong>Total:</strong> ${formatPrice(order.totalAmount)}</h3>
-        </div>
+    <div style="margin-top:25px;">
+  <p><strong>Subtotal:</strong> ${formatPrice(order.subtotal)}</p>
 
-        <h3>
-          Método de entrega: ${order.delivery.method}
-          ${
-            order.delivery.method === "envio a domicilio"
-              ? `<br/>Dirección: ${order.delivery.address}, ${order.delivery.city}`
-              : ""
-          }
-        </h3>
+  ${
+    order.delivery.method === "domicilio"
+      ? `<p><strong>Envío:</strong> ${formatPrice(order.delivery.shippingCost)}</p>`
+      : ""
+  }
+
+  <h3><strong>Total:</strong> ${formatPrice(order.totalAmount)}</h3>
+</div>
+
+       <h3>
+  Método de entrega: ${getDeliveryLabel(order.delivery.method)}
+  ${
+    order.delivery.method === "domicilio"
+      ? `<br/>Dirección: ${order.delivery.address}, ${order.delivery.city}`
+      : ""
+  }
+</h3>
 
       </div>
     </div>
@@ -180,9 +190,7 @@ const sendOrderEmail = async (order) => {
     console.log("MessageId:", info.messageId);
 
     console.log("Tiempo de envío:", endTime - startTime, "ms");
-
   } catch (error) {
-
     console.log("====================================");
     console.log("❌ ERROR EN MAILER");
 
@@ -194,9 +202,7 @@ const sendOrderEmail = async (order) => {
     console.log(JSON.stringify(order, null, 2));
 
     throw error;
-
   }
-
 };
 
 module.exports = sendOrderEmail;

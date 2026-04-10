@@ -54,21 +54,25 @@ const createOrder = async (req, res) => {
     CALCULO DE TOTALES
     ========================
     */
-    console.log("-------------------------------------------------");
-    console.log("💰 Calculando totales...");
-
     const subtotal = items.reduce(
-      (acc, item) => acc + item.price * item.quantity,
-      0
-    );
+  (acc, item) => acc + item.price * item.quantity,
+  0
+);
 
-const shippingCost =
-  delivery.method === "domicilio"  ? 25000 : 0;
-    const totalAmount = subtotal + shippingCost;
+// 👇 lógica centralizada
+let shippingCost = 0;
 
-    console.log("Subtotal:", subtotal);
-    console.log("Envío:", shippingCost);
-    console.log("Total:", totalAmount);
+if (delivery.method === "domicilio") {
+  shippingCost = 25000;
+
+  // 🎁 ejemplo: envío gratis si supera X monto
+  if (subtotal >= 100000) {
+    shippingCost = 0;
+  }
+}
+
+const totalAmount = subtotal + shippingCost;
+
 
     /*
     ========================
@@ -100,18 +104,18 @@ const orderNumber = `ORD-${year}-${String(seq).padStart(5, "0")}`;
     console.log("-------------------------------------------------");
     console.log("💾 Guardando orden...");
 
-    const newOrder = new Order({
-      orderNumber,
-      customer,
-      delivery: {
-        ...delivery,
-        shippingCost,
-      },
-      items,
-      subtotal,
-      totalAmount,
-      emailSent: false,
-    });
+ const newOrder = new Order({
+  orderNumber,
+  customer,
+  delivery: {
+    ...delivery,
+    shippingCost, // 👈 lo define el backend
+  },
+  items,
+  subtotal,
+  totalAmount,
+  emailSent: false,
+});
 
     const savedOrder = await newOrder.save();
 
