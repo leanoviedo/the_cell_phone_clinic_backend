@@ -1,32 +1,19 @@
 const express = require("express");
-const Service = require("../models/modelService.js");
-const connectDB = require("../config/db.js");
+const {
+  getServices,
+  getServiceById,
+  createServices,
+  updateService,
+  deleteService,
+} = require("../controllers/serviceController");
 
 const router = express.Router();
 
-router.get("/", async (_req, res) => {
-  try {
-    // Asegurar conexión con MongoDB Atlas
-    await connectDB();
+router.get("/", getServices);
+router.get("/:id", getServiceById);
 
-    console.log("=================================");
-    console.log("📦 BASE:", Service.db.name);
-    console.log("📁 COLECCIÓN:", Service.collection.name);
-
-    const services = await Service.find().lean();
-
-    console.log("📊 CANTIDAD DE SERVICIOS:", services.length);
-    console.log("📋 SERVICIOS:", services);
-
-    res.json(services);
-  } catch (error) {
-    console.error("❌ Error al obtener servicios:", error);
-
-    res.status(500).json({
-      message: "Error al obtener los servicios",
-      error: error.message,
-    });
-  }
-});
+router.post("/", createServices);
+router.put("/:id", updateService);
+router.delete("/:id", deleteService);
 
 module.exports = router;
